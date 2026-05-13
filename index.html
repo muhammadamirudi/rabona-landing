@@ -31,15 +31,51 @@
         --radius2: 26px;
         --max: 1160px;
       }
+      /* ===== SMOOTH SCROLL & PERFORMANCE ===== */
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 80px;
+}
+
+* {
+  scroll-behavior: smooth;
+}
+
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+section {
+  will-change: auto;
+  transform: translateZ(0);
+}
+
+.hero-bg-video {
+  backface-visibility: hidden;
+  will-change: auto;
+}
+/* ===== END SMOOTH SCROLL ===== */
 
       * {
         box-sizing: border-box;
       }
 
-      html,
-      body {
-        height: 100%;
-      }
+      /* ===== SMOOTH SCROLL & PERFORMANCE ===== */
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 80px;
+}
+
+* {
+  scroll-behavior: smooth;
+}
+
+html,
+body {
+  height: 100%;
+}
+/* ===== END SMOOTH SCROLL ===== */
 
       body {
         margin: 0;
@@ -51,8 +87,20 @@
         font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji",
           "Segoe UI Emoji";
         overflow-x: hidden;
+        /* Add these */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
       }
+/* Performance optimizations */
+section {
+  will-change: auto;
+  transform: translateZ(0);
+}
 
+.hero-bg-video {
+  backface-visibility: hidden;
+  will-change: auto;
+}
       a {
         color: inherit;
         text-decoration: none;
@@ -1089,7 +1137,7 @@
         * {
           animation: none !important;
           transition: none !important;
-          scroll-behavior: auto !important;
+          scroll-behavior: smooth !important;
         }
       }
     </style>
@@ -1489,18 +1537,27 @@
         const $ = (sel, root = document) => root.querySelector(sel);
         const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
 
-        // Smooth scroll for internal anchors
-        document.addEventListener("click", (e) => {
-          const a = e.target.closest("a[href^='#']");
-          if (!a) return;
-          const id = a.getAttribute("href");
-          const el = id && id.length > 1 ? document.querySelector(id) : null;
-          if (!el) return;
-          e.preventDefault();
-          el.scrollIntoView({ behavior: "smooth", block: "start" });
-          history.replaceState(null, "", id);
-        });
+      // Enhanced smooth scroll for internal anchors
+document.addEventListener("click", (e) => {
+  const a = e.target.closest("a[href^='#']");
+  if (!a) return;
+  const id = a.getAttribute("href");
+  const el = id && id.length > 1 ? document.querySelector(id) : null;
+  if (!el) return;
+  e.preventDefault();
+  
+  const header = document.querySelector("header");
+  const headerHeight = header ? header.offsetHeight : 80;
+  const elementPosition = el.getBoundingClientRect().top;
+  const offsetPosition = elementPosition + window.pageYOffset - headerHeight - 20;
 
+  window.scrollTo({
+    top: offsetPosition,
+    behavior: "smooth"
+  });
+  
+  history.replaceState(null, "", id);
+});
         // Reveal on scroll
         const io = new IntersectionObserver(
           (entries) => {
