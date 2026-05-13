@@ -1,0 +1,1731 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="dark" />
+    <link rel="icon" type="image/png" href="./assets/images/logo.png" />
+    <title>Rabona — Physics-based Multiplayer Soccer</title>
+    <meta
+      name="description"
+      content="Rabona is a physics-based online multiplayer soccer game. Curve the ball, embrace ragdoll chaos, and outsmart reactive goalkeeping."
+    />
+
+    <style>
+      :root {
+        --bg0: #0a0e1a; /* deep navy */
+        --bg1: #060815; /* deeper navy */
+        --panel: rgba(255, 255, 255, 0.06);
+        --panel2: rgba(255, 255, 255, 0.09);
+        --line: rgba(255, 255, 255, 0.12);
+        --text: rgba(255, 255, 255, 0.92);
+        --muted: rgba(255, 255, 255, 0.70);
+        --muted2: rgba(255, 255, 255, 0.56);
+        --accent: #8bc34a; /* Rabona lime */
+        --accent-rgb: 139, 195, 74;
+        --accent2: #d9f7bf; /* lime glow highlight */
+        --white: #ffffff;
+        --shadow: 0 24px 70px rgba(0, 0, 0, 0.65);
+        --shadow2: 0 10px 28px rgba(0, 0, 0, 0.55);
+        --radius: 18px;
+        --radius2: 26px;
+        --max: 1160px;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        height: 100%;
+      }
+
+      body {
+        margin: 0;
+        color: var(--text);
+        background: radial-gradient(1100px 560px at 80% -10%, rgba(var(--accent-rgb), 0.24), transparent 55%),
+          radial-gradient(900px 460px at 12% -8%, rgba(255, 255, 255, 0.10), transparent 55%),
+          radial-gradient(1000px 720px at 55% 110%, rgba(var(--accent-rgb), 0.12), transparent 60%),
+          linear-gradient(180deg, var(--bg0) 0%, var(--bg1) 55%, var(--bg0) 100%);
+        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji",
+          "Segoe UI Emoji";
+        overflow-x: hidden;
+      }
+
+      a {
+        color: inherit;
+        text-decoration: none;
+      }
+
+      .container {
+        width: min(var(--max), calc(100% - 48px));
+        margin: 0 auto;
+      }
+
+      /* Subtle animated grid + noise */
+      .bg {
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        z-index: -1;
+      }
+
+      .bg::before {
+        content: "";
+        position: absolute;
+        inset: -2px;
+        opacity: 0.6;
+        background:
+          linear-gradient(to right, rgba(255, 255, 255, 0.06) 1px, transparent 1px) 0 0 / 76px 76px,
+          linear-gradient(to bottom, rgba(255, 255, 255, 0.06) 1px, transparent 1px) 0 0 / 76px 76px;
+        mask-image: radial-gradient(60% 55% at 50% 15%, rgba(0, 0, 0, 1), rgba(0, 0, 0, 0));
+        filter: drop-shadow(0 0 12px rgba(var(--accent-rgb), 0.16));
+        animation: gridFloat 14s ease-in-out infinite;
+      }
+
+      .bg::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='240' height='240' filter='url(%23n)' opacity='.18'/%3E%3C/svg%3E");
+        background-size: 240px 240px;
+        opacity: 0.22;
+        mix-blend-mode: overlay;
+      }
+
+      @keyframes gridFloat {
+        0%,
+        100% {
+          transform: translate3d(0, 0, 0);
+        }
+        50% {
+          transform: translate3d(10px, 8px, 0);
+        }
+      }
+
+      /* Top nav */
+      header {
+        position: sticky;
+        top: 0;
+        z-index: 50;
+        backdrop-filter: blur(12px);
+        background: linear-gradient(180deg, rgba(10, 14, 26, 0.88) 0%, rgba(10, 14, 26, 0.55) 100%);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      }
+
+      .nav {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 18px;
+        padding: 14px 0;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-weight: 800;
+        letter-spacing: 0.6px;
+      }
+
+      .logo {
+        width: auto;
+        height: 40px;
+        display: block;
+        object-fit: contain;
+      }
+
+      .brand span {
+        color: rgba(255, 255, 255, 0.95);
+      }
+
+      nav a {
+        color: var(--muted);
+        font-weight: 600;
+        font-size: 14px;
+        padding: 10px 12px;
+        border-radius: 10px;
+        transition: background 160ms ease, color 160ms ease;
+      }
+
+      nav a:hover {
+        background: rgba(255, 255, 255, 0.06);
+        color: var(--text);
+      }
+
+      .nav-cta {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 9px 12px;
+        border-radius: 999px;
+        border: 1px solid rgba(255, 255, 255, 0.10);
+        background: rgba(255, 255, 255, 0.05);
+        color: var(--muted);
+        font-size: 13px;
+        font-weight: 650;
+      }
+
+      .dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 999px;
+        background: var(--accent);
+        box-shadow: 0 0 0 4px rgba(var(--accent-rgb), 0.18);
+      }
+
+      /* Buttons */
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        padding: 12px 16px;
+        border-radius: 14px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        background: rgba(255, 255, 255, 0.06);
+        color: rgba(255, 255, 255, 0.92);
+        font-weight: 750;
+        letter-spacing: 0.2px;
+        cursor: pointer;
+        transition: transform 140ms ease, background 140ms ease, border-color 140ms ease, box-shadow 140ms ease;
+        user-select: none;
+      }
+
+      .btn:hover {
+        transform: translateY(-1px);
+        background: rgba(255, 255, 255, 0.08);
+        border-color: rgba(255, 255, 255, 0.18);
+        box-shadow: var(--shadow2);
+      }
+
+      .btn:active {
+        transform: translateY(0px);
+      }
+
+      .btn-primary {
+        border-color: rgba(var(--accent-rgb), 0.55);
+        background: linear-gradient(180deg, rgba(var(--accent-rgb), 0.28), rgba(var(--accent-rgb), 0.10));
+        box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.06) inset, 0 26px 60px rgba(var(--accent-rgb), 0.16);
+      }
+
+      .btn-primary:hover {
+        border-color: rgba(var(--accent-rgb), 0.75);
+        background: linear-gradient(180deg, rgba(var(--accent-rgb), 0.32), rgba(var(--accent-rgb), 0.12));
+      }
+
+      .btn-icon {
+        width: 42px;
+        height: 42px;
+        padding: 0;
+        border-radius: 14px;
+      }
+
+      .kbd {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        font-size: 12px;
+        color: rgba(255, 255, 255, 0.78);
+        background: rgba(0, 0, 0, 0.25);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        padding: 2px 8px;
+        border-radius: 999px;
+      }
+
+      /* Hero */
+      .hero {
+        position: relative;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        padding: 96px 0 0;
+        overflow: hidden;
+        background: transparent;
+      }
+
+      .hero-bg-video {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        z-index: 0;
+      }
+
+      .hero-overlay {
+        position: absolute;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1;
+      }
+
+      .hero-bottom-fade {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        height: 180px;
+        background: linear-gradient(to bottom, transparent 60%, #0a0e1a 100%);
+        z-index: 1;
+        pointer-events: none;
+      }
+
+      .hero-grid {
+        display: grid;
+        grid-template-columns: 1.2fr 0.8fr;
+        gap: 28px;
+        align-items: center;
+        position: relative;
+        z-index: 2;
+      }
+
+      .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        padding: 9px 12px;
+        border-radius: 999px;
+        border: 1px solid rgba(var(--accent-rgb), 0.34);
+        background: rgba(var(--accent-rgb), 0.10);
+        color: rgba(255, 255, 255, 0.92);
+        font-weight: 750;
+        letter-spacing: 0.6px;
+        text-transform: uppercase;
+        font-size: 12px;
+      }
+
+      .title {
+        margin: 14px 0 10px;
+        font-size: clamp(42px, 6vw, 72px);
+        line-height: 0.92;
+        letter-spacing: -1.5px;
+      }
+
+      .title .accent {
+        color: var(--accent);
+        text-shadow: 0 0 18px rgba(var(--accent-rgb), 0.30);
+      }
+
+      .tagline {
+        margin: 0;
+        color: var(--muted);
+        font-size: 18px;
+        line-height: 1.55;
+        max-width: 62ch;
+      }
+
+      .hero-actions {
+        margin-top: 22px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        align-items: center;
+      }
+
+      .wishlist-status {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: var(--muted2);
+        font-weight: 650;
+        font-size: 13px;
+      }
+
+      .spark {
+        width: 12px;
+        height: 12px;
+        border-radius: 4px;
+        background: linear-gradient(180deg, rgba(var(--accent-rgb), 1), rgba(var(--accent-rgb), 0.25));
+        box-shadow: 0 0 0 4px rgba(var(--accent-rgb), 0.16);
+      }
+
+      .hero-card {
+        position: relative;
+        border-radius: var(--radius2);
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.03));
+        border: 1px solid rgba(255, 255, 255, 0.10);
+        box-shadow: var(--shadow);
+        overflow: hidden;
+      }
+
+      .hero-card::before {
+        content: "";
+        position: absolute;
+        inset: -60px -60px auto auto;
+        width: 260px;
+        height: 260px;
+        background: radial-gradient(circle at 30% 30%, rgba(var(--accent-rgb), 0.44), rgba(var(--accent-rgb), 0.0) 60%);
+        transform: rotate(15deg);
+      }
+
+      .hero-media {
+        padding: 18px;
+      }
+
+      .mock {
+        aspect-ratio: 16 / 10;
+        border-radius: 18px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        background:
+          radial-gradient(18px 18px at 30% 35%, rgba(var(--accent-rgb), 0.55), transparent 65%),
+          radial-gradient(22px 22px at 74% 62%, rgba(255, 255, 255, 0.18), transparent 65%),
+          radial-gradient(900px 420px at 45% 110%, rgba(var(--accent-rgb), 0.18), transparent 55%),
+          linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(0, 0, 0, 0.14));
+        overflow: hidden;
+        position: relative;
+      }
+
+      .mock::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background:
+          linear-gradient(90deg, rgba(255, 255, 255, 0.08) 1px, transparent 1px) 0 0 / 38px 38px,
+          linear-gradient(180deg, rgba(255, 255, 255, 0.08) 1px, transparent 1px) 0 0 / 38px 38px;
+        opacity: 0.12;
+        mask-image: radial-gradient(75% 75% at 50% 45%, rgba(0, 0, 0, 1), rgba(0, 0, 0, 0));
+      }
+
+      .hud {
+        position: absolute;
+        inset: 0;
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+      }
+
+      .hud-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+      }
+
+      .score {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 10px;
+        border-radius: 14px;
+        background: rgba(0, 0, 0, 0.25);
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        backdrop-filter: blur(10px);
+        font-weight: 800;
+      }
+
+      .team {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        color: rgba(255, 255, 255, 0.88);
+        font-size: 12px;
+      }
+
+      .chip {
+        width: 10px;
+        height: 10px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.35);
+      }
+
+      .chip.green {
+        background: var(--accent);
+        box-shadow: 0 0 0 4px rgba(var(--accent-rgb), 0.16);
+      }
+
+      .timer {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        color: rgba(255, 255, 255, 0.82);
+        font-size: 12px;
+      }
+
+      .hud-bottom {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 12px;
+      }
+
+      .callout {
+        display: grid;
+        gap: 6px;
+        padding: 10px 12px;
+        border-radius: 16px;
+        background: rgba(0, 0, 0, 0.26);
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        backdrop-filter: blur(10px);
+        max-width: 220px;
+      }
+
+      .callout b {
+        font-size: 13px;
+        letter-spacing: 0.2px;
+      }
+
+      .callout span {
+        color: rgba(255, 255, 255, 0.72);
+        font-size: 12px;
+        line-height: 1.35;
+      }
+
+      .ball {
+        position: absolute;
+        left: 54%;
+        top: 56%;
+        width: 44px;
+        height: 44px;
+        border-radius: 999px;
+        background:
+          radial-gradient(10px 10px at 32% 30%, rgba(255, 255, 255, 1), rgba(255, 255, 255, 0) 60%),
+          radial-gradient(28px 28px at 50% 55%, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0) 70%),
+          radial-gradient(circle at 50% 50%, rgba(var(--accent-rgb), 0.35), rgba(var(--accent-rgb), 0) 70%),
+          linear-gradient(180deg, rgba(255, 255, 255, 0.35), rgba(0, 0, 0, 0.25));
+        border: 1px solid rgba(255, 255, 255, 0.20);
+        box-shadow: 0 24px 60px rgba(0, 0, 0, 0.60), 0 0 0 6px rgba(var(--accent-rgb), 0.10);
+        transform: translate(-50%, -50%);
+      }
+
+      .trail {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+      }
+
+      .trail svg {
+        width: 100%;
+        height: 100%;
+        opacity: 0.8;
+      }
+
+      .trail path {
+        stroke: rgba(var(--accent-rgb), 0.70);
+        stroke-width: 3;
+        fill: none;
+        filter: drop-shadow(0 0 10px rgba(var(--accent-rgb), 0.26));
+        stroke-linecap: round;
+        stroke-dasharray: 420;
+        stroke-dashoffset: 420;
+        animation: dash 2.8s ease-in-out infinite;
+      }
+
+      @keyframes dash {
+        0% {
+          stroke-dashoffset: 420;
+          opacity: 0.0;
+        }
+        18% {
+          opacity: 1;
+        }
+        55% {
+          opacity: 1;
+        }
+        100% {
+          stroke-dashoffset: -40;
+          opacity: 0;
+        }
+      }
+
+      .hero-stats {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px;
+        padding: 12px 18px 18px;
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+        background: rgba(255, 255, 255, 0.02);
+      }
+
+      .stat {
+        border-radius: 16px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: rgba(255, 255, 255, 0.04);
+        padding: 12px 12px;
+      }
+
+      .stat b {
+        display: block;
+        font-size: 13px;
+        color: rgba(255, 255, 255, 0.84);
+      }
+
+      .stat span {
+        display: block;
+        margin-top: 6px;
+        color: rgba(255, 255, 255, 0.92);
+        font-weight: 850;
+        letter-spacing: 0.4px;
+      }
+
+      /* Sections */
+      section {
+        padding: 68px 0;
+        background: #0a0e1a;
+      }
+
+      #features {
+        padding-top: 68px;
+      }
+
+      #gameplay,
+      #gallery,
+      #requirements {
+        background: #0a0e1a;
+      }
+
+      .section-head {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 18px;
+        margin-bottom: 22px;
+      }
+
+      .section-head h2 {
+        margin: 0;
+        font-size: 26px;
+        letter-spacing: -0.4px;
+      }
+
+      .section-head p {
+        margin: 0;
+        color: var(--muted);
+        max-width: 62ch;
+        line-height: 1.5;
+      }
+
+      /* Features */
+      .features {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 14px;
+      }
+
+      .card {
+        border-radius: var(--radius);
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.03));
+        border: 1px solid rgba(255, 255, 255, 0.10);
+        box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.15) inset;
+        padding: 16px;
+        position: relative;
+        overflow: hidden;
+        min-height: 170px;
+      }
+
+      .card::before {
+        content: "";
+        position: absolute;
+        inset: -80px -80px auto auto;
+        width: 220px;
+        height: 220px;
+        background: radial-gradient(circle at 30% 30%, rgba(var(--accent-rgb), 0.24), rgba(var(--accent-rgb), 0) 60%);
+        transform: rotate(12deg);
+      }
+
+      .icon {
+        width: 44px;
+        height: 44px;
+        border-radius: 14px;
+        display: grid;
+        place-items: center;
+        background: rgba(var(--accent-rgb), 0.10);
+        border: 1px solid rgba(var(--accent-rgb), 0.32);
+        box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+        margin-bottom: 10px;
+      }
+
+      .card h3 {
+        margin: 0 0 8px;
+        font-size: 16px;
+        letter-spacing: -0.2px;
+      }
+
+      .card p {
+        margin: 0;
+        color: var(--muted);
+        line-height: 1.45;
+        font-size: 14px;
+      }
+
+      /* Gallery */
+      /* Gameplay video */
+      .video-card {
+        border-radius: var(--radius2);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        background: rgba(255, 255, 255, 0.04);
+        overflow: hidden;
+        box-shadow: 0 26px 78px rgba(0, 0, 0, 0.55);
+        position: relative;
+      }
+
+      .video-wrap {
+        position: relative;
+        aspect-ratio: 16 / 9;
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(0, 0, 0, 0.18));
+      }
+
+      .video-wrap video {
+        width: 100%;
+        height: 100%;
+        display: block;
+        object-fit: cover;
+        filter: saturate(1.12) contrast(1.06) brightness(1.02);
+      }
+
+      .video-overlay {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        background:
+          radial-gradient(900px 520px at 35% 110%, rgba(var(--accent-rgb), 0.12), transparent 60%),
+          linear-gradient(180deg, rgba(0, 0, 0, 0.30), rgba(0, 0, 0, 0.10) 40%, rgba(0, 0, 0, 0.35));
+      }
+
+      .video-controls {
+        position: absolute;
+        left: 16px;
+        right: 16px;
+        bottom: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        pointer-events: auto;
+      }
+
+      .video-meta {
+        display: grid;
+        gap: 3px;
+        padding: 10px 12px;
+        border-radius: 16px;
+        background: rgba(0, 0, 0, 0.35);
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        backdrop-filter: blur(10px);
+      }
+
+      .video-meta b {
+        font-size: 13px;
+      }
+
+      .video-meta span {
+        font-size: 12px;
+        color: rgba(255, 255, 255, 0.70);
+      }
+
+      /* Steam badge */
+      .steam-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        padding: 11px 14px;
+        border-radius: 14px;
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        background: rgba(255, 255, 255, 0.06);
+        color: rgba(255, 255, 255, 0.92);
+        font-weight: 800;
+        letter-spacing: 0.2px;
+        transition: transform 140ms ease, background 140ms ease, border-color 140ms ease, box-shadow 140ms ease;
+      }
+
+      .steam-badge:hover {
+        transform: translateY(-1px);
+        background: rgba(255, 255, 255, 0.08);
+        border-color: rgba(var(--accent-rgb), 0.40);
+        box-shadow: 0 24px 60px rgba(0, 0, 0, 0.50);
+      }
+
+      .steam-logo {
+        width: 20px;
+        height: 20px;
+        display: inline-block;
+      }
+
+      /* Gallery with real images */
+      .gallery-grid {
+        display: grid;
+        grid-template-columns: repeat(12, 1fr);
+        gap: 12px;
+      }
+
+      .shot {
+        position: relative;
+        border-radius: 18px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        background: rgba(255, 255, 255, 0.04);
+        overflow: hidden;
+        cursor: pointer;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.42);
+        transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+        min-height: 140px;
+      }
+
+      .shot img {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+        transform: scale(1.02);
+        filter: saturate(1.18) contrast(1.08) brightness(1.02);
+      }
+
+      .shot::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background:
+          radial-gradient(800px 480px at 35% 110%, rgba(var(--accent-rgb), 0.12), transparent 60%),
+          linear-gradient(180deg, rgba(0, 0, 0, 0.05), rgba(0, 0, 0, 0.45));
+        opacity: 0.95;
+        transition: opacity 180ms ease;
+        pointer-events: none;
+      }
+
+      .shot:hover {
+        transform: translateY(-2px);
+        border-color: rgba(var(--accent-rgb), 0.45);
+        box-shadow: 0 26px 78px rgba(0, 0, 0, 0.55);
+      }
+
+      .shot:hover::before {
+        opacity: 0.82;
+      }
+
+      .shot .label {
+        position: absolute;
+        left: 12px;
+        bottom: 12px;
+        right: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 10px 12px;
+        border-radius: 14px;
+        background: rgba(0, 0, 0, 0.35);
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        backdrop-filter: blur(10px);
+      }
+
+      .shot .label b {
+        font-size: 13px;
+      }
+
+      .shot .label span {
+        color: rgba(255, 255, 255, 0.72);
+        font-size: 12px;
+      }
+
+      .shot:nth-child(1) {
+        grid-column: span 8;
+      }
+      .shot:nth-child(2) {
+        grid-column: span 4;
+      }
+      .shot:nth-child(3) {
+        grid-column: span 4;
+      }
+      .shot:nth-child(4) {
+        grid-column: span 4;
+      }
+      .shot:nth-child(5) {
+        grid-column: span 4;
+      }
+      .shot:nth-child(6) {
+        grid-column: span 4;
+      }
+      .shot:nth-child(7) {
+        grid-column: span 4;
+      }
+      .shot:nth-child(8) {
+        grid-column: span 4;
+      }
+
+      /* Requirements */
+      .req-wrap {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+      }
+
+      .req {
+        border-radius: var(--radius);
+        border: 1px solid rgba(255, 255, 255, 0.10);
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.03));
+        padding: 18px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.42);
+      }
+
+      .req h3 {
+        margin: 0 0 10px;
+        font-size: 16px;
+      }
+
+      .req ul {
+        margin: 0;
+        padding-left: 18px;
+        color: rgba(255, 255, 255, 0.80);
+        line-height: 1.65;
+      }
+
+      .req li {
+        margin: 6px 0;
+      }
+
+      .req strong {
+        color: rgba(255, 255, 255, 0.92);
+      }
+
+      /* Footer */
+      footer {
+        padding: 26px 0 44px;
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+        background: rgba(0, 0, 0, 0.18);
+      }
+
+      .foot {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        color: rgba(255, 255, 255, 0.62);
+        font-size: 13px;
+      }
+
+      .foot a {
+        color: rgba(255, 255, 255, 0.86);
+      }
+
+      /* Toast */
+      .toast {
+        position: fixed;
+        right: 18px;
+        bottom: 18px;
+        z-index: 80;
+        min-width: min(420px, calc(100vw - 36px));
+        border-radius: 18px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        background: rgba(10, 14, 24, 0.82);
+        backdrop-filter: blur(14px);
+        box-shadow: var(--shadow);
+        padding: 14px 14px;
+        display: grid;
+        gap: 6px;
+        transform: translateY(14px);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 180ms ease, transform 180ms ease;
+      }
+
+      .toast.show {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      .toast b {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 14px;
+      }
+
+      .toast p {
+        margin: 0;
+        color: rgba(255, 255, 255, 0.72);
+        font-size: 13px;
+        line-height: 1.4;
+      }
+
+      /* Lightbox */
+      .lightbox {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.72);
+        backdrop-filter: blur(10px);
+        z-index: 90;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 180ms ease;
+      }
+
+      .lightbox.open {
+        opacity: 1;
+        pointer-events: auto;
+      }
+
+      .lightbox-inner {
+        height: 100%;
+        display: grid;
+        place-items: center;
+        padding: 18px;
+      }
+
+      .lightbox-card {
+        width: min(980px, 100%);
+        border-radius: 22px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        background: rgba(10, 14, 24, 0.78);
+        box-shadow: var(--shadow);
+        overflow: hidden;
+      }
+
+      .lightbox-media {
+        aspect-ratio: 16 / 9;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .lightbox-media img {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        display: block;
+        background: rgba(0, 0, 0, 0.35);
+      }
+
+      .lightbox-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 12px 12px;
+        border-top: 1px solid rgba(255, 255, 255, 0.10);
+      }
+
+      .lightbox-title {
+        display: grid;
+        gap: 2px;
+      }
+
+      .lightbox-title b {
+        font-size: 14px;
+      }
+
+      .lightbox-title span {
+        font-size: 12px;
+        color: rgba(255, 255, 255, 0.70);
+      }
+
+      .lightbox-actions {
+        display: flex;
+        gap: 10px;
+      }
+
+      /* Utilities */
+      .divider {
+        height: 1px;
+        width: 100%;
+        background: rgba(255, 255, 255, 0.08);
+      }
+
+      .muted {
+        color: var(--muted);
+      }
+
+      /* Reveal animation */
+      .reveal {
+        opacity: 0;
+        transform: translateY(10px);
+        transition: opacity 600ms ease, transform 600ms ease;
+      }
+
+      .reveal.visible {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      /* Responsiveness */
+      @media (max-width: 980px) {
+        nav {
+          display: none;
+        }
+        .hero-grid {
+          grid-template-columns: 1fr;
+        }
+        .features {
+          grid-template-columns: repeat(2, 1fr);
+        }
+        .req-wrap {
+          grid-template-columns: 1fr;
+        }
+        .hero {
+          min-height: auto;
+          padding-top: 72px;
+        }
+      }
+
+      @media (max-width: 620px) {
+        .container {
+          width: min(var(--max), calc(100% - 32px));
+        }
+        .features {
+          grid-template-columns: 1fr;
+        }
+        .hero-stats {
+          grid-template-columns: 1fr;
+        }
+        .shot:nth-child(1),
+        .shot:nth-child(2),
+        .shot:nth-child(3),
+        .shot:nth-child(4),
+        .shot:nth-child(5),
+        .shot:nth-child(6),
+        .shot:nth-child(7),
+        .shot:nth-child(8) {
+          grid-column: span 12;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        * {
+          animation: none !important;
+          transition: none !important;
+          scroll-behavior: auto !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="bg" aria-hidden="true"></div>
+
+    <header>
+      <div class="container nav">
+        <a class="brand" href="#top" aria-label="Rabona home">
+          <img class="logo" src="./assets/images/logo.jpg" alt="Rabona logo" />
+          <span>RABONA</span>
+        </a>
+
+        <nav aria-label="Primary">
+          <a href="#features">Features</a>
+          <a href="#gameplay">Gameplay Preview</a>
+          <a href="#gallery">Screenshots</a>
+          <a href="#requirements">System Requirements</a>
+        </nav>
+
+        <div class="nav-cta">
+          <span class="pill"><span class="dot" aria-hidden="true"></span> Online Multiplayer</span>
+          <button class="btn btn-icon" id="muteBtn" type="button" aria-label="Toggle sound">
+            <span id="muteIcon" aria-hidden="true">🔊</span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main id="top">
+      <section class="hero">
+        <video
+          class="hero-bg-video"
+          src="./assets/videos/Gameplay1.mp4"
+          autoplay
+          muted
+          loop
+          playsinline
+          preload="metadata"
+          aria-hidden="true"
+        ></video>
+        <div class="hero-overlay" aria-hidden="true"></div>
+        <div class="hero-bottom-fade" aria-hidden="true"></div>
+        <div class="container hero-grid">
+          <div>
+            <div class="eyebrow reveal">PHYSICS-BASED SOCCER MAYHEM</div>
+            <h1 class="title reveal">
+              <span class="accent">Rabona</span><br />
+              bend reality, not rules.
+            </h1>
+            <p class="tagline reveal">
+              A physics-based <b>online multiplayer</b> soccer game where every touch matters. Curve the ball, clash in
+              ragdoll tackles, and outsmart <b>reactive goalkeeping</b> in high-speed matches.
+            </p>
+
+            <div class="hero-actions reveal">
+              <a
+                class="btn btn-primary"
+                href="https://store.steampowered.com/app/3810050/Rabona/"
+                target="_blank"
+                rel="noreferrer"
+              >
+                <span aria-hidden="true">★</span>
+                Add to Wishlist
+              </a>
+              <a
+                class="steam-badge"
+                href="https://store.steampowered.com/app/3810050/Rabona/"
+                target="_blank"
+                rel="noreferrer"
+                aria-label="Open Rabona on Steam"
+              >
+                <svg class="steam-logo" viewBox="0 0 24 24" aria-hidden="true">
+                  <path
+                    fill="currentColor"
+                    d="M12 2a10 10 0 0 0-9.74 12.2l5.73 2.36a3.2 3.2 0 0 0 1.96.02l2.6 1.07a3.7 3.7 0 0 0 4.84-2l.1-.25 3.18-1.28A10 10 0 0 0 12 2Zm7.91 11.13-2.31.93a4.65 4.65 0 0 0-6.47-2.54l1.02-2.45a4.2 4.2 0 1 1 7.76 3.06ZM9.42 17.92a2.2 2.2 0 1 1 .01-4.39 2.2 2.2 0 0 1-.01 4.39Zm4.55.8a2.7 2.7 0 0 1-2.02-3.45l2.77 1.15a1.7 1.7 0 1 0 1.22-3.17l-2.88-1.18a3.7 3.7 0 0 1 7.04 2.68 2.7 2.7 0 0 1-1.71 1.66l-3.3 1.33a2.68 2.68 0 0 1-1.12.98Z"
+                  />
+                </svg>
+                Steam
+              </a>
+              <a class="btn" href="#gallery">
+                <span aria-hidden="true">▶</span>
+                View Screenshots
+              </a>
+              <span class="wishlist-status" aria-live="polite">
+                <span class="spark" aria-hidden="true"></span>
+                <span>Wishlist on Steam for updates</span>
+                <span class="kbd">↗</span>
+              </span>
+            </div>
+          </div>
+
+          <aside class="hero-card reveal" aria-label="Gameplay preview card">
+            <div class="hero-media">
+              <div class="mock" id="mock">
+                <div class="trail" aria-hidden="true">
+                  <svg viewBox="0 0 800 500" preserveAspectRatio="none">
+                    <path d="M70,400 C210,320 290,190 430,220 C560,250 610,120 740,95" />
+                  </svg>
+                </div>
+                <div class="hud">
+                  <div class="hud-top">
+                    <div class="score" aria-label="Scoreboard">
+                      <span class="team"><span class="chip green"></span> RBN</span>
+                      <span>2</span>
+                      <span class="muted">—</span>
+                      <span>1</span>
+                      <span class="team"><span class="chip"></span> ARC</span>
+                    </div>
+                    <div class="timer" aria-label="Match timer">78:42</div>
+                  </div>
+                  <div class="hud-bottom">
+                    <div class="callout">
+                      <b>Curve Shot Ready</b>
+                      <span>Hold aim, release for bend. Physics does the rest.</span>
+                    </div>
+                    <div class="callout">
+                      <b>Reactive Keeper</b>
+                      <span>Reads spin &amp; speed. No two saves feel the same.</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="ball" id="ball" aria-hidden="true"></div>
+              </div>
+            </div>
+            <div class="hero-stats" aria-label="Highlights">
+              <div class="stat">
+                <b>Physics-first</b>
+                <span>Every touch</span>
+              </div>
+              <div class="stat">
+                <b>Multiplayer</b>
+                <span>Online matches</span>
+              </div>
+              <div class="stat">
+                <b>Style</b>
+                <span>AAA energy</span>
+              </div>
+            </div>
+          </aside>
+        </div>
+      </section>
+
+      <section id="features">
+        <div class="container">
+          <div class="section-head reveal">
+            <div>
+              <h2>Features built for clutch moments</h2>
+              <p>
+                Rabona leans into simulation and spectacle—clean inputs, messy outcomes, and highlight-worthy plays.
+              </p>
+            </div>
+            <a class="btn" href="#requirements">Check Requirements</a>
+          </div>
+
+          <div class="features">
+            <article class="card reveal">
+              <div class="icon" aria-hidden="true">⚙</div>
+              <h3>Physics-based gameplay</h3>
+              <p>
+                Momentum, collisions, and spin are always in play. Shots, passes, and tackles feel grounded and
+                unpredictable—in the best way.
+              </p>
+            </article>
+
+            <article class="card reveal">
+              <div class="icon" aria-hidden="true">↻</div>
+              <h3>Curve the ball</h3>
+              <p>
+                Put bend on shots and crosses. Control the arc to thread defenders, curl into corners, and punish bad
+                positioning.
+              </p>
+            </article>
+
+            <article class="card reveal">
+              <div class="icon" aria-hidden="true">🧩</div>
+              <h3>Ragdoll physics</h3>
+              <p>
+                When bodies collide, chaos follows. Expect hilarious tumbles, desperate blocks, and messy goalmouth
+                scrambles.
+              </p>
+            </article>
+
+            <article class="card reveal">
+              <div class="icon" aria-hidden="true">🧤</div>
+              <h3>Reactive goalkeeping</h3>
+              <p>
+                Keepers read ball speed and spin, reacting differently to knuckleballs, curlers, and deflections—every
+                save is earned.
+              </p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section id="gameplay">
+        <div class="container">
+          <div class="section-head reveal">
+            <div>
+              <h2>Gameplay Preview</h2>
+              <p>
+                A quick look at Rabona in motion—physics touches, chaotic tackles, and clutch saves. Autoplays muted and
+                loops.
+              </p>
+            </div>
+            <span class="pill"><span class="dot" aria-hidden="true"></span> Autoplay muted</span>
+          </div>
+
+          <div class="video-card reveal">
+            <div class="video-wrap">
+              <video
+                id="gameplayVideo"
+                src="./assets/videos/Gameplay1.mp4"
+                autoplay
+                muted
+                loop
+                playsinline
+                preload="metadata"
+              ></video>
+              <div class="video-overlay" aria-hidden="true"></div>
+              <div class="video-controls" aria-label="Video controls">
+                <div class="video-meta">
+                  <b>Rabona — Physics-based Multiplayer</b>
+                  <span>Press Play/Pause to control</span>
+                </div>
+                <button class="btn btn-primary" id="videoToggle" type="button" aria-label="Pause video">
+                  <span id="videoToggleIcon" aria-hidden="true">❚❚</span>
+                  <span id="videoToggleText">Pause</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="gallery">
+        <div class="container">
+          <div class="section-head reveal">
+            <div>
+              <h2>Screenshots &amp; gallery</h2>
+              <p>
+                Concept shots to capture the vibe: neon pitch lights, kinetic motion blur, and that last-second chaos.
+                Click to enlarge.
+              </p>
+            </div>
+            <span class="pill"><span class="dot" aria-hidden="true"></span> Click any shot</span>
+          </div>
+
+          <div class="gallery-grid" id="galleryGrid">
+            <div class="shot reveal" role="button" tabindex="0" data-title="Rabona Screenshot 1" data-sub="Match action">
+              <img src="./assets/images/screenshots1.jpg" alt="Rabona gameplay screenshot 1" loading="lazy" />
+              <div class="label">
+                <b>Screenshot 1</b>
+                <span>Match action</span>
+              </div>
+            </div>
+            <div class="shot reveal" role="button" tabindex="0" data-title="Rabona Screenshot 2" data-sub="Tactical play">
+              <img src="./assets/images/screenshots2.jpg" alt="Rabona gameplay screenshot 2" loading="lazy" />
+              <div class="label">
+                <b>Screenshot 2</b>
+                <span>Tactical play</span>
+              </div>
+            </div>
+            <div class="shot reveal" role="button" tabindex="0" data-title="Rabona Screenshot 3" data-sub="Curve shot">
+              <img src="./assets/images/screenshots3.jpg" alt="Rabona gameplay screenshot 3" loading="lazy" />
+              <div class="label">
+                <b>Screenshot 3</b>
+                <span>Curve shot</span>
+              </div>
+            </div>
+            <div class="shot reveal" role="button" tabindex="0" data-title="Rabona Screenshot 4" data-sub="Goalkeeping">
+              <img src="./assets/images/screenshots4.jpg" alt="Rabona gameplay screenshot 4" loading="lazy" />
+              <div class="label">
+                <b>Screenshot 4</b>
+                <span>Goalkeeping</span>
+              </div>
+            </div>
+            <div class="shot reveal" role="button" tabindex="0" data-title="Rabona Screenshot 5" data-sub="Midfield battle">
+              <img src="./assets/images/screenshots5.jpg" alt="Rabona gameplay screenshot 5" loading="lazy" />
+              <div class="label">
+                <b>Screenshot 5</b>
+                <span>Midfield battle</span>
+              </div>
+            </div>
+            <div class="shot reveal" role="button" tabindex="0" data-title="Rabona Screenshot 6" data-sub="Set piece">
+              <img src="./assets/images/screenshots6.jpg" alt="Rabona gameplay screenshot 6" loading="lazy" />
+              <div class="label">
+                <b>Screenshot 6</b>
+                <span>Set piece</span>
+              </div>
+            </div>
+            <div class="shot reveal" role="button" tabindex="0" data-title="Rabona Screenshot 7" data-sub="Ragdoll collision">
+              <img src="./assets/images/screenshots7.jpg" alt="Rabona gameplay screenshot 7" loading="lazy" />
+              <div class="label">
+                <b>Screenshot 7</b>
+                <span>Ragdoll collision</span>
+              </div>
+            </div>
+            <div class="shot reveal" role="button" tabindex="0" data-title="Rabona Screenshot 8" data-sub="Stadium atmosphere">
+              <img src="./assets/images/screenshots8.jpg" alt="Rabona gameplay screenshot 8" loading="lazy" />
+              <div class="label">
+                <b>Screenshot 8</b>
+                <span>Stadium atmosphere</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="requirements">
+        <div class="container">
+          <div class="section-head reveal">
+            <div>
+              <h2>System requirements</h2>
+              <p class="muted">
+                Targeting smooth online play and stable physics. (Concept values—tune to your actual build later.)
+              </p>
+            </div>
+            <a class="btn" href="#top">Back to top</a>
+          </div>
+
+          <div class="req-wrap">
+            <div class="req reveal">
+              <h3>Minimum</h3>
+              <ul>
+                <li><strong>OS</strong>: Windows 10 (64-bit)</li>
+                <li><strong>CPU</strong>: Intel i5 (4th gen) / AMD Ryzen 3</li>
+                <li><strong>RAM</strong>: 8 GB</li>
+                <li><strong>GPU</strong>: GTX 960 / RX 470 (2–4 GB VRAM)</li>
+                <li><strong>Storage</strong>: 10 GB available space</li>
+                <li><strong>Network</strong>: Broadband Internet connection</li>
+              </ul>
+            </div>
+            <div class="req reveal">
+              <h3>Recommended</h3>
+              <ul>
+                <li><strong>OS</strong>: Windows 11 (64-bit)</li>
+                <li><strong>CPU</strong>: Intel i7 / AMD Ryzen 5</li>
+                <li><strong>RAM</strong>: 16 GB</li>
+                <li><strong>GPU</strong>: RTX 2060 / RX 6600 (6+ GB VRAM)</li>
+                <li><strong>Storage</strong>: 10 GB SSD</li>
+                <li><strong>Network</strong>: Low-latency connection for competitive play</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <div class="container foot">
+        <div>© <span id="year"></span> Rabona</div>
+        <div><strong>Fan-made concept page</strong> — not official.</div>
+        <div>
+          <a href="https://store.steampowered.com/app/3810050/Rabona/" target="_blank" rel="noreferrer">View on Steam</a>
+          · <span class="kbd">Esc</span> close gallery
+        </div>
+      </div>
+    </footer>
+
+    <div class="toast" id="toast" role="status" aria-live="polite">
+      <b><span class="dot" aria-hidden="true"></span><span id="toastTitle">Saved</span></b>
+      <p id="toastMsg">Added to wishlist (stored in this browser).</p>
+    </div>
+
+    <div class="lightbox" id="lightbox" aria-hidden="true">
+      <div class="lightbox-inner" role="dialog" aria-modal="true" aria-label="Screenshot preview">
+        <div class="lightbox-card">
+          <div class="lightbox-media">
+            <img id="lightboxImg" alt="Rabona screenshot preview" />
+          </div>
+          <div class="lightbox-bar">
+            <div class="lightbox-title">
+              <b id="lightboxTitle">Screenshot</b>
+              <span id="lightboxSub">Concept art</span>
+            </div>
+            <div class="lightbox-actions">
+              <button class="btn" id="prevShot" type="button" aria-label="Previous screenshot">
+                <span aria-hidden="true">←</span> Prev
+              </button>
+              <button class="btn" id="nextShot" type="button" aria-label="Next screenshot">
+                Next <span aria-hidden="true">→</span>
+              </button>
+              <button class="btn btn-primary" id="closeLightbox" type="button" aria-label="Close preview">
+                <span aria-hidden="true">✕</span> Close
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      (() => {
+        const $ = (sel, root = document) => root.querySelector(sel);
+        const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
+
+        // Smooth scroll for internal anchors
+        document.addEventListener("click", (e) => {
+          const a = e.target.closest("a[href^='#']");
+          if (!a) return;
+          const id = a.getAttribute("href");
+          const el = id && id.length > 1 ? document.querySelector(id) : null;
+          if (!el) return;
+          e.preventDefault();
+          el.scrollIntoView({ behavior: "smooth", block: "start" });
+          history.replaceState(null, "", id);
+        });
+
+        // Reveal on scroll
+        const io = new IntersectionObserver(
+          (entries) => {
+            for (const ent of entries) {
+              if (ent.isIntersecting) ent.target.classList.add("visible");
+            }
+          },
+          { threshold: 0.14 }
+        );
+        $$(".reveal").forEach((el) => io.observe(el));
+
+        // Hero ball follows mouse slightly
+        const mock = $("#mock");
+        const ball = $("#ball");
+        const trailPath = $(".trail path");
+        let ballT = { x: 0.54, y: 0.56 };
+        let ballV = { x: 0, y: 0 };
+
+        function clamp(n, a, b) {
+          return Math.max(a, Math.min(b, n));
+        }
+
+        function onMove(ev) {
+          const r = mock.getBoundingClientRect();
+          const x = (ev.clientX - r.left) / r.width;
+          const y = (ev.clientY - r.top) / r.height;
+          const tx = clamp(x, 0.12, 0.88);
+          const ty = clamp(y, 0.18, 0.86);
+          ballV.x += (tx - ballT.x) * 0.08;
+          ballV.y += (ty - ballT.y) * 0.08;
+        }
+
+        mock?.addEventListener("mousemove", onMove);
+        mock?.addEventListener("mouseleave", () => {
+          ballV.x += (0.54 - ballT.x) * 0.08;
+          ballV.y += (0.56 - ballT.y) * 0.08;
+        });
+
+        function animate() {
+          // damped spring-like motion
+          ballV.x *= 0.86;
+          ballV.y *= 0.86;
+          ballT.x = clamp(ballT.x + ballV.x, 0.10, 0.90);
+          ballT.y = clamp(ballT.y + ballV.y, 0.14, 0.90);
+
+          if (ball) {
+            ball.style.left = (ballT.x * 100).toFixed(2) + "%";
+            ball.style.top = (ballT.y * 100).toFixed(2) + "%";
+          }
+
+          // tiny path shimmer by toggling strokeDashoffset base
+          if (trailPath) {
+            const t = performance.now() * 0.001;
+            trailPath.style.opacity = String(0.65 + 0.25 * Math.sin(t * 1.2));
+          }
+
+          requestAnimationFrame(animate);
+        }
+        requestAnimationFrame(animate);
+
+        const toast = $("#toast");
+        const toastTitle = $("#toastTitle");
+        const toastMsg = $("#toastMsg");
+        let toastTimer = null;
+
+        function showToast(title, msg) {
+          toastTitle.textContent = title;
+          toastMsg.textContent = msg;
+          toast.classList.add("show");
+          if (toastTimer) window.clearTimeout(toastTimer);
+          toastTimer = window.setTimeout(() => toast.classList.remove("show"), 2400);
+        }
+
+        // Gameplay video controls
+        const gameplayVideo = $("#gameplayVideo");
+        const videoToggle = $("#videoToggle");
+        const videoToggleIcon = $("#videoToggleIcon");
+        const videoToggleText = $("#videoToggleText");
+
+        function syncVideoUI() {
+          if (!gameplayVideo) return;
+          const paused = gameplayVideo.paused;
+          videoToggleIcon.textContent = paused ? "▶" : "❚❚";
+          videoToggleText.textContent = paused ? "Play" : "Pause";
+          videoToggle?.setAttribute("aria-label", paused ? "Play video" : "Pause video");
+        }
+
+        videoToggle?.addEventListener("click", async () => {
+          if (!gameplayVideo) return;
+          try {
+            if (gameplayVideo.paused) await gameplayVideo.play();
+            else gameplayVideo.pause();
+          } catch {
+            // ignore
+          }
+          syncVideoUI();
+          if (sfx.enabled) sfx.click();
+        });
+
+        gameplayVideo?.addEventListener("play", syncVideoUI);
+        gameplayVideo?.addEventListener("pause", syncVideoUI);
+        syncVideoUI();
+
+        // Gallery lightbox
+        const lightbox = $("#lightbox");
+        const lightboxImg = $("#lightboxImg");
+        const lightboxTitle = $("#lightboxTitle");
+        const lightboxSub = $("#lightboxSub");
+        const closeLightbox = $("#closeLightbox");
+        const prevShot = $("#prevShot");
+        const nextShot = $("#nextShot");
+        const shots = $$("#galleryGrid .shot");
+        let currentShot = 0;
+
+        function openShot(index) {
+          currentShot = (index + shots.length) % shots.length;
+          const el = shots[currentShot];
+          const title = el.getAttribute("data-title") || "Screenshot";
+          const sub = el.getAttribute("data-sub") || "Concept image";
+          lightboxTitle.textContent = title;
+          lightboxSub.textContent = sub;
+          const img = el.querySelector("img");
+          if (img && lightboxImg) {
+            lightboxImg.src = img.getAttribute("src") || "";
+            lightboxImg.alt = img.getAttribute("alt") || "Rabona screenshot";
+          }
+          lightbox.classList.add("open");
+          lightbox.setAttribute("aria-hidden", "false");
+          if (sfx.enabled) sfx.whoosh();
+        }
+
+        function closeShot() {
+          lightbox.classList.remove("open");
+          lightbox.setAttribute("aria-hidden", "true");
+        }
+
+        shots.forEach((el, idx) => {
+          const open = () => openShot(idx);
+          el.addEventListener("click", open);
+          el.addEventListener("keydown", (e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              open();
+            }
+          });
+        });
+
+        lightbox?.addEventListener("click", (e) => {
+          if (e.target === lightbox) closeShot();
+        });
+
+        closeLightbox?.addEventListener("click", closeShot);
+        prevShot?.addEventListener("click", () => openShot(currentShot - 1));
+        nextShot?.addEventListener("click", () => openShot(currentShot + 1));
+
+        document.addEventListener("keydown", (e) => {
+          if (!lightbox.classList.contains("open")) return;
+          if (e.key === "Escape") closeShot();
+          if (e.key === "ArrowLeft") openShot(currentShot - 1);
+          if (e.key === "ArrowRight") openShot(currentShot + 1);
+        });
+
+        // Year
+        $("#year").textContent = String(new Date().getFullYear());
+
+        // Tiny SFX (optional) using WebAudio, no external assets
+        const muteBtn = $("#muteBtn");
+        const muteIcon = $("#muteIcon");
+        const sfx = {
+          enabled: true,
+          ctx: null,
+          ensure() {
+            if (this.ctx) return this.ctx;
+            const Ctx = window.AudioContext || window.webkitAudioContext;
+            if (!Ctx) return null;
+            this.ctx = new Ctx();
+            return this.ctx;
+          },
+          beep({ freq = 440, dur = 0.06, type = "sine", gain = 0.035, glideTo = null } = {}) {
+            const ctx = this.ensure();
+            if (!ctx || !this.enabled) return;
+            const o = ctx.createOscillator();
+            const g = ctx.createGain();
+            o.type = type;
+            o.frequency.value = freq;
+            if (glideTo) {
+              o.frequency.setValueAtTime(freq, ctx.currentTime);
+              o.frequency.exponentialRampToValueAtTime(glideTo, ctx.currentTime + dur);
+            }
+            g.gain.value = gain;
+            o.connect(g);
+            g.connect(ctx.destination);
+            o.start();
+            o.stop(ctx.currentTime + dur);
+          },
+          click() {
+            this.beep({ freq: 740, glideTo: 520, dur: 0.07, type: "triangle", gain: 0.03 });
+          },
+          whoosh() {
+            this.beep({ freq: 260, glideTo: 780, dur: 0.10, type: "sawtooth", gain: 0.018 });
+          },
+        };
+
+        function syncMuteUI() {
+          muteIcon.textContent = sfx.enabled ? "🔊" : "🔇";
+          muteBtn?.setAttribute("aria-pressed", String(!sfx.enabled));
+        }
+
+        muteBtn?.addEventListener("click", async () => {
+          // unlocking audio context requires user gesture; ensure once
+          sfx.ensure();
+          if (sfx.ctx && sfx.ctx.state === "suspended") {
+            try {
+              await sfx.ctx.resume();
+            } catch {
+              // ignore
+            }
+          }
+          sfx.enabled = !sfx.enabled;
+          syncMuteUI();
+          showToast("Sound", sfx.enabled ? "SFX enabled." : "SFX muted.");
+          if (sfx.enabled) sfx.click();
+        });
+
+        syncMuteUI();
+      })();
+    </script>
+  </body>
+</html>
